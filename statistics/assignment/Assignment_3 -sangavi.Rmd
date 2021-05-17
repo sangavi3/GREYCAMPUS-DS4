@@ -1,0 +1,286 @@
+
+Please use data set COVID19.csv for next questions.  This data set is in a raw format. You have to clean this dataset before any analysis. Data set is totally raw downloaded from worldmeters today (March 1st 2021)  (https://www.worldometers.info/coronavirus/). Hence, data cleaning and manipulation are required. Please also explain your results with numerical summary as well as graphs, wherever it is applicable. Please check your data also, if it is skewed or normally distributed. Results should be based on skewness or normal distribution. 
+
+The COVID19.csv data set is raw data extracted from Worldometer (March 1st, 2021). Use COVID19.csv data to answer the questions considering the following:
+
+The data set requires data cleaning and manipulation before any analysis.
+Explain your results with a numerical summary and graphs, wherever it is applicable.
+The results should be based on skewness or normal distribution, therefore, do check your data if it is skewed or normally distributed.
+
+# Step 1: Keep rows containing country information and remove the rest of the rows. Apart from the country, you should not be having any other row. Move on to the next step only after finishing this.
+
+
+```{r, message = FALSE}
+library(readxl)
+library(readr)
+library(tidyverse)
+
+covid_dat <- read_csv("COVID19.csv")
+
+covid_dat <- covid_dat %>% filter(!is.na(`Country,Other`))
+```
+
+```{r}
+# code discussed in session
+# covid_raw <- read.csv("COVID19.csv", 
+#                       stringsAsFactors = FALSE,
+#                       na.strings = c("", "NA"))
+
+#removing unnecessary rows
+covid_dat <- covid_dat %>% 
+  slice(9:229) %>%  #function to include specific rows
+  select(3:20)
+
+```
+
+
+# Step 2: Calculate the missing percentage of each column using a function. If any column has missing data more than 5%, please remove it. (Do not try this for rows)
+
+```{r}
+# missing_perc_col <- function(dataset) {
+#   out = data.frame()
+#   for (i in seq(ncol(dataset))){
+#     perc_missing = round(sum(is.na(dataset[i])) * 100 / nrow(dataset[i]),2)
+#     result = data.frame(names(dataset[i]), perc_missing)
+#     out = rbind(out , result)
+#   } 
+#   print(out)
+# }
+# 
+# missing_perc_col(covid_dat)
+# sum(is.na(covid_dat$ActiveCases))
+```
+
+```{r}
+#code discussed in class
+
+pMiss <- function(x) {
+  (sum(is.na(x)/length(x))) *100
+}
+
+missing_perc_col <- apply(covid_dat, 2, pMiss)
+
+missing_perc_col
+```
+
+```{r}
+#Not removing total deaths, population, Tot\xa0Cases/1M pop  because its required in the following code even though the percentage of missing values is approx 7%. for Deaths/1M pop and `Tests/1M pop`, missing data is 13.98%
+
+
+# covid_dat <- covid_dat %>% select(-`#`, -NewCases, -NewDeaths, -NewRecovered, 
+#                                   -`Serious,Critical`,
+#                                   -TotalTests, -`1 Caseevery X ppl`,
+#                                   -`1 Deathevery X ppl`, -`1 Testevery X ppl`)
+# 
+# head(covid_dat)
+```
+When we use 5% threshold, it was excluding some important variables that are required for further analysis. So, a threshold of 10% is a better choice.
+
+
+```{r}
+#code disccused in class
+
+covid_dat <- covid_dat %>% 
+  purrr::discard(~sum(is.na(.x))/ length(.x)*100 >= 10)
+
+# datatable(covid_dat)
+```
+
+# Step 3: Give a better column name after cleaning your data.
+
+```{r}
+# colnames(covid_dat) <- c("S.No.", "Country", "TotalCases", "TotalDeaths", "TotalRecovered",
+#                          "ActiveCases", "TotalCases_per_mil","TotalDeaths_per_mil",
+#                          "TotalTests_per_mil","Population","Continent") 
+
+#code discussed in class
+names(covid_dat)
+covid_dat_clean <- covid_dat %>% 
+  rename(Country = "Country,Other",
+         Total_Cases_1M_pop = `Tot\xa0Cases/1M pop`,
+         Deaths_1M_pop = "Deaths/1M pop",
+         X1_Casesevery_X_ppl = "1 Caseevery X ppl",
+         X1_Deathevery_X_ppl = "1 Deathevery X ppl",
+         X1_testevery_X_ppl = "1 Testevery X ppl")
+```
+
+Removing comma from the dataste, as number contains comma.
+
+```{r}
+comma_removal <- function(x) {
+  gsub(",", "", x)
+}
+
+#APPLYING comma_removal function to all applicable columns in the dataset using apply function. and converting it into dataframe.
+
+covid_dat_clean <- as.data.frame(
+  apply(covid_dat_clean, 
+  MARGIN = 2, 
+  FUN = comma_removal))
+
+str(covid_dat_clean)
+```
+Whenever dataset is showing certain columns as factor and we want to convert those into numeric, never ever directly try to convert it into numerics. If we use as.numeric first, them  level of factor variables will become your numeric data, not actual data. Hence, first convert factor columns into character and then convert them into numeric.
+```{r}
+columns <- c(2:10, 12:14)
+covid_dat_clean[, columns] <- lapply(columns, function(x)as.numeric(as.character(covid_dat_clean[[x]])))
+
+str(covid_dat_clean)
+```
+
+
+## Create plots for total cases, total death, and total recovery. Explain with a figure for each.
+
+```{r}
+hist(covid_dat_clean$TotalCases)
+hist(covid_dat_clean$TotalDeaths)
+hist(covid_dat_clean$TotalRecovered)
+
+```
+
+Use transformation 
+
+```{r}
+ggplot(covid_dat_clean, aes(x = TotalCases))+
+  scale_x_log10()+
+  geom_histogram()
+```
+
+
+## Create a plot to examine the correlation between total cases and total population. Explain if there is any correlation between total cases and total population.
+
+```{r}
+library(corrplot)
+library(ggpubr)
+
+ggscatter(covid_dat_clean, x = "TotalCases", y = "Population", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "TotalCases", ylab = "Population")
+
+cor(covid_dat_clean$TotalCases, covid_dat_clean$Population, 
+    method="pearson", use = "complete.obs") 
+
+```
+
+## Create a plot to examine the correlation between Tot Cases/1M pop and total population. Explain if there is any correlation between them?
+
+```{r}
+
+ggscatter(covid_dat_clean, x = "Total_Cases_1M_pop", y = "Population", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "TotalCases per million", ylab = "Population")
+
+cor(covid_dat_clean$Total_Cases_1M_pop, covid_dat_clean$Population, 
+    method="pearson", use = "complete.obs") 
+```
+
+
+## Which column do you feel is better for comparison purposes, total cases or TotCases/1M pop. Explain.
+
+Total cases per million is better as it gives a better as it gives a relative measure. Comparing absolute numbers does not make sense as each country has different population. 
+
+## Create a plot to examine the correlation between total cases and total death. Explain the figure.
+
+```{r}
+ggscatter(covid_dat_clean, x = "TotalCases", y = "TotalDeaths", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "TotalCases", ylab = "Total Deaths")
+
+cor(covid_dat_clean$TotalCases, covid_dat_clean$TotalDeaths, 
+    method="pearson", use = "complete.obs") 
+```
+
+There is almost 100% correlation between total cases and total deaths.
+
+## Create a plot to examine the correlation between total cases and Deaths/1M pop. Explain the figure. 
+```{r}
+
+ggscatter(covid_dat_clean, x = "TotalCases", y = "Deaths_1M_pop", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "TotalCases", ylab = "Total Deaths per million")
+
+cor(covid_dat_clean$TotalCases, covid_dat_clean$Deaths_1M_pop,
+    method="pearson", use = "complete.obs") 
+```
+
+
+## Which column is more suitable to compare the result, total death or Death/1Mpop?
+
+Deaths per million is a better measure to compare as it gives a relative measure after accounting for different levels of population.
+
+## Compare Tot Cases/1M pop by continent, and explain your result. 
+
+Europe has the highest cases per million followed by South America.
+
+```{r}
+covid_dat_clean %>% group_by(Continent) %>% 
+  na.omit(Continent) %>% 
+  summarise(avg = round(median(Total_Cases_1M_pop, na.rm = TRUE),2),
+            sd = round(sd(Total_Cases_1M_pop, na.rm = TRUE)),1)
+
+
+covid_dat_clean %>% 
+  group_by(Continent) %>% 
+  na.omit(Continent) %>% 
+  ggplot(aes(x = Continent, y = Total_Cases_1M_pop)) +
+  geom_boxplot()
+
+```
+
+
+## Compare Deaths/1M pop by continent, and explain your result.
+
+Europe also has the highest number of deaths per million of the population.
+
+```{r}
+covid_dat_clean %>% group_by(Continent) %>% 
+  na.omit(Continent) %>% 
+  summarise(avg = round(median(Deaths_1M_pop, na.rm = TRUE),2),
+            sd = round(sd(Deaths_1M_pop, na.rm = TRUE)),1)
+
+
+covid_dat_clean %>% 
+  group_by(Continent) %>% 
+  na.omit(Continent) %>% 
+  ggplot(aes(x = Continent, y = Deaths_1M_pop)) +
+  geom_boxplot()
+```
+
+## Which country is best among testing the COVID19 and which country is worst? There are two columns total test vs. test/M. Choose appropriate column. 
+
+Using the Tests/1M pop column, the minimum tests done by any country are 575 and maximum done are 5540672. By filtering, we see that the minimum tests done are by Yemen and maximum by Gibraltar. 
+
+```{r}
+summary(covid_dat_clean$`Tests/1M pop`)
+
+covid_dat_clean %>% filter(`Tests/1M pop` == 575)
+covid_dat_clean %>% filter(`Tests/1M pop` == 5540672)
+```
+
+## Compare your COVID19 test results by continent? There are two columns total test vs test/M. Choose appropriate column. 
+
+Results suggest that Europe has done the most tests and africa least.
+
+```{r}
+covid_dat_clean %>% group_by(Continent) %>% 
+  na.omit(Continent) %>% 
+  summarise(avg = round(median(`Tests/1M pop`, na.rm = TRUE),2),
+            sd = round(sd(`Tests/1M pop`, na.rm = TRUE),1)) %>% 
+  arrange(desc(avg))
+```
+
+## Check if Tests/1M pop is skewed or normally distributed.
+
+It is skewed. 
+
+```{r}
+library(moments)
+
+skewness(covid_dat_clean$`Tests/1M pop`, na.rm = TRUE)
+hist(covid_dat_clean$`Tests/1M pop`)
+```
+
