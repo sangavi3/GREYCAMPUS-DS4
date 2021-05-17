@@ -1,0 +1,157 @@
+
+#Assignment 2 in R
+
+
+##Question 1: The final score of the World Cup finals of football is France  4 and Croatia 2. Please use a control structure to print the results as Team ---- Wins -----.
+
+Not sure what control structure to use.
+
+```{r}
+teams <- c("France", "Croatia")
+score <- c(4, 2)
+
+for (i in teams){
+  if (i == "France"){
+      print(paste("Team",i, "Wins", 4))
+  }else {
+    print(paste("Team",i, "Wins", 2))
+  }
+}
+```
+
+
+##Question 2: The mtcars data set has several factor variables. However, R is reading them as numeric. Please convert them into factors using a for loop. Please use column 8 to 11 for the loop.
+
+```{r}
+str(mtcars)
+
+for (i in c(8:11)){
+  mtcars[,i] = as.factor(mtcars[,i])
+}
+
+str(mtcars)
+```
+
+
+##You will receive a data set (Dataset 2.1). This data set is a subset of a real data set.  
+
+##Question 3: Write a function to get the percentage of NAs in each column.
+
+```{r}
+library(readxl)
+
+dataset_2_1 <- read_excel("Dataset - 2.1.xlsx")
+
+perc_missing_col <- function(data){
+  for (i in seq(length(data))){
+  print(paste(colnames(data[i]) ,"has", sum(is.na(data[i]))/length(data),"% NAs")) 
+  }
+}
+
+perc_missing_col(dataset_2_1)
+```
+
+##Question 4: Write a function to get the percentage of NAs in each row.
+
+```{r}
+
+perc_missing_row <- function(data){
+  for (i in seq(nrow(data))){
+  print(paste(colnames(data[i,]) ,"has", sum(is.na(data[i,]))/nrow(data),"% NAs")) 
+  }
+}
+
+perc_missing_row(dataset_2_1)
+```
+
+
+##Question 5: Write a function to get a summary of numeric columns (use the summary function) such as THC, CO, CO2, and so on in the data set. With the same function, try to generate box plot using base R.
+
+```{r}
+numeric_summary <- function(data) { all_class <- lapply(data, class)
+  for (i in seq(length(data))){
+    
+    if (all_class[[i]] == "numeric"){
+      print(colnames(dataset_2_1[i]))
+      print(summary(data[i]))
+      boxplot(data[i])
+      title(colnames(dataset_2_1[i]))
+      }}
+}
+
+numeric_summary(dataset_2_1)
+```
+
+
+##Question 6: Write a function to create histograms of numeric columns, such as THC, CO, CO2, and so on in the data set. Use ggpot2 to generate figures.
+
+ggplot is not visible
+
+
+```{r}
+numeric_summary_with_hist <- function(data) { 
+  all_class <- lapply(data, class)
+  for (i in seq(length(data))){
+    
+    if (all_class[[i]] == "numeric"){
+      
+      print(summary(data[i]))
+      ggplot(data, aes(colnames(data[i]))) + 
+        geom_histogram(stat = "count")
+      
+      }}
+}
+
+numeric_summary_with_hist(dataset_2_1)
+```
+
+##You will receive a data set (Dataset 2.2). This data set is a subset of a real data set.
+
+##Question 7: The data set contains date columns. All of these date columns are untidy. Please create a better formatted data set. The date should be dd/mm/yyyy in the final format. Use columns 2, 3, and 5 only.
+
+How can we use mutate in a loop?
+
+```{r}
+library("readr")
+library("tidyverse")
+dataset_2_2 <- read_csv("Data set - 2.2.csv")
+colnames(dataset_2_2)
+
+dataset_2_2 <- dataset_2_2 %>% mutate( 
+  `First FD Date` = as.Date(strptime(gsub("/","-",as.factor(`First FD Date`)),"%m-%d-%Y"), "%Y-%m-%d"),
+  `Last FD Date` = as.Date(strptime(gsub("/","-",as.factor(`Last FD Date`)),"%m-%d-%Y"), "%Y-%m-%d"),
+  `FD termination date` = as.Date(strptime(gsub("/","-",as.factor(`FD termination date`)),"%m-%d-%Y"), "%Y-%m-%d"))
+
+```
+
+
+##Question 8: The date of birth column contains months in string format. Please create a tidy data column with months in numeric format. Now your data should be similar to the previous question.
+
+Since the years are only given in 2 digits, the code is adding two zeroes in front. 
+
+Add 4-digit years. R assumes that 2-digits years are 00-68 = 2000-2068 and 69-99 = 1969-1999. How to correct this?
+
+```{r}
+
+dataset_2_2 <- dataset_2_2 %>% mutate( 
+  `Date of Birth` = as.Date(strptime(factor(`Date of Birth`),"%d-%b-%y"), "%Y-%m-%d"), origin = "1904-01-01")
+
+```
+
+
+##Question 9: Convert all dates into date format; they are currently in character variable format.
+
+```{r}
+# done with the above two code chunks. 
+```
+
+
+##Question 10: Create a new column age based on the date of birth column and the first FD column. Date format is necessary to do basic arithmetic.
+
+age is not write because the date of birth column years are not right.
+
+```{r}
+dataset_2_2 <- dataset_2_2 %>% mutate(today = Sys.Date()) %>% 
+                               mutate(age = (`Date of Birth` - `First FD Date`)/ 365)
+```
+
